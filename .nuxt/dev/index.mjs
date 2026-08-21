@@ -3,10 +3,11 @@ import { Server } from 'node:http';
 import { resolve, dirname, join } from 'node:path';
 import nodeCrypto from 'node:crypto';
 import { parentPort, threadId } from 'node:worker_threads';
-import { defineEventHandler, handleCacheHeaders, splitCookiesString, createEvent, fetchWithEvent, isEvent, eventHandler, setHeaders, createError, sendRedirect, proxyRequest, getRequestHeader, setResponseHeaders, setResponseStatus, send, getRequestHeaders, setResponseHeader, appendResponseHeader, getRequestURL, getResponseHeader, removeResponseHeader, getQuery as getQuery$1, getRequestWebStream, createApp, createRouter as createRouter$1, toNodeListener, lazyEventHandler, getResponseStatus, getRouterParam, readBody, getResponseStatusText } from 'file://C:/Users/ET/Documents/Planting/node_modules/h3/dist/index.mjs';
+import { defineEventHandler, handleCacheHeaders, splitCookiesString, createEvent, fetchWithEvent, isEvent, eventHandler, setHeaders, createError, sendRedirect, proxyRequest, getRequestHeader, setResponseHeaders, setResponseStatus, send, getRequestHeaders, setResponseHeader, appendResponseHeader, getRequestURL, getResponseHeader, removeResponseHeader, getQuery as getQuery$1, getRequestWebStream, createApp, createRouter as createRouter$1, toNodeListener, lazyEventHandler, getResponseStatus, getRouterParam, readBody, setHeader, getResponseStatusText } from 'file://C:/Users/ET/Documents/Planting/node_modules/h3/dist/index.mjs';
 import { escapeHtml } from 'file://C:/Users/ET/Documents/Planting/node_modules/@vue/shared/dist/shared.cjs.js';
 import viteNodeEntry_mjs from 'file:///C:/Users/ET/Documents/Planting/node_modules/nuxt/node_modules/@nuxt/vite-builder/dist/vite-node-entry.mjs';
 import { viteNodeFetch } from 'file:///C:/Users/ET/Documents/Planting/node_modules/nuxt/node_modules/@nuxt/vite-builder/dist/vite-node.mjs';
+import { getStore } from 'file://C:/Users/ET/Documents/Planting/node_modules/@netlify/blobs/dist/main.js';
 import { parseURL, withoutBase, joinURL, getQuery, withQuery, withTrailingSlash, decodePath, withLeadingSlash, withoutTrailingSlash, encodePath, joinRelativeURL } from 'file://C:/Users/ET/Documents/Planting/node_modules/ufo/dist/index.mjs';
 import { createHead as createHead$1, propsToString, renderSSRHead } from 'file://C:/Users/ET/Documents/Planting/node_modules/unhead/dist/server.mjs';
 import { isVNode, isRef, toValue } from 'file://C:/Users/ET/Documents/Planting/node_modules/vue/index.mjs';
@@ -2755,10 +2756,12 @@ async function getIslandContext(event) {
 	};
 }
 
+const _lazy_kzqBdJ = () => Promise.resolve().then(function () { return room$1; });
 const _lazy_zd3M09 = () => Promise.resolve().then(function () { return renderer; });
 
 const handlers = [
   { route: '', handler: _YfNgwB, lazy: false, middleware: true, method: undefined },
+  { route: '/api/room', handler: _lazy_kzqBdJ, lazy: true, middleware: false, method: undefined },
   { route: '/__nuxt_error', handler: _lazy_zd3M09, lazy: true, middleware: false, method: undefined },
   { route: '/__nuxt_island/**', handler: handler$1, lazy: false, middleware: false, method: undefined },
   { route: '/**', handler: _lazy_zd3M09, lazy: true, middleware: false, method: undefined }
@@ -3112,6 +3115,52 @@ const styles = {};
 const styles$1 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
   __proto__: null,
   default: styles
+}, Symbol.toStringTag, { value: 'Module' }));
+
+const store = () => getStore({ name: "bloom-rush-rooms", consistency: "strong" });
+const clean = (value, max = 24) => String(value != null ? value : "").replace(/[^a-zA-Z0-9 _-]/g, "").trim().slice(0, max);
+async function readRoom() {
+  const roomStore = store();
+  const state = await roomStore.get("sprout/state", { type: "json" });
+  const listed = await roomStore.list({ prefix: "sprout/players/" });
+  const players = (await Promise.all(listed.blobs.map(({ key }) => roomStore.get(key, { type: "json" })))).filter(Boolean);
+  return { state: state != null ? state : { phase: "waiting", gameId: 0, endsAt: 0 }, players: players.sort((a, b) => b.score - a.score) };
+}
+const room = defineEventHandler(async (event) => {
+  var _a;
+  setHeader(event, "cache-control", "no-store");
+  if (event.method === "GET") return readRoom();
+  const body = await readBody(event);
+  const action = clean(body == null ? void 0 : body.action, 12);
+  const roomStore = store();
+  if (action === "join" || action === "score") {
+    const id = clean(body == null ? void 0 : body.id, 48);
+    const name = clean(body == null ? void 0 : body.name, 12);
+    if (!id || !name) throw createError({ statusCode: 400, statusMessage: "A participant id and name are required" });
+    const participant = {
+      id,
+      name,
+      ready: action === "join" ? true : Boolean((_a = body == null ? void 0 : body.ready) != null ? _a : true),
+      score: Math.max(0, Math.min(99, Number(body == null ? void 0 : body.score) || 0)),
+      updatedAt: Date.now()
+    };
+    await roomStore.setJSON(`sprout/players/${id}`, participant);
+  }
+  if (action === "start") {
+    const current = await readRoom();
+    await roomStore.setJSON("sprout/state", { phase: "playing", gameId: current.state.gameId + 1, endsAt: Date.now() + 25e3 });
+  }
+  if (action === "reset") {
+    const current = await readRoom();
+    await Promise.all(current.players.map(({ id }) => roomStore.delete(`sprout/players/${id}`)));
+    await roomStore.setJSON("sprout/state", { phase: "waiting", gameId: current.state.gameId, endsAt: 0 });
+  }
+  return readRoom();
+});
+
+const room$1 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
+  __proto__: null,
+  default: room
 }, Symbol.toStringTag, { value: 'Module' }));
 
 //#region src/runtime/utils/renderer/payload.ts

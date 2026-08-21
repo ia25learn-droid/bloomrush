@@ -173,15 +173,20 @@
     "../layers/*/modules/*/*.*",
     "../shared/**/*",
     "../modules/*/shared/**/*",
-    "../layers/*/shared/**/*"
+    "../layers/*/shared/**/*",
+    "../node_modules/runtime",
+    "../node_modules/dist/runtime"
   ],
   "exclude": [
     "../node_modules",
     "../node_modules/nuxt/node_modules",
+    "../node_modules/@netlify/nuxt/node_modules",
     "../dist",
     "../.data",
     "../modules/*/runtime/server/**/*",
     "../layers/*/server/**/*",
-    "../layers/*/modules/*/runtime/server/**/*"
+    "../layers/*/modules/*/runtime/server/**/*",
+    "../node_modules/runtime/server",
+    "../node_modules/dist/runtime/server"
   ]
 }
