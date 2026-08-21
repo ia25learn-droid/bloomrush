@@ -3,19 +3,19 @@ import QRCode from "qrcode"
 type Screen = "lobby" | "waiting" | "play"
 type Participant = { id:string; name:string; score:number; ready:boolean }
 const role=ref<"host"|"player">("host"), screen=ref<Screen>("lobby"), qr=ref(""), name=ref("You"), ready=ref(false), taps=ref(0), seconds=ref(25)
-const players=ref<Participant[]>([]), gameId=ref(0), participantId=ref("")
+const players=ref<Participant[]>([]), gameId=ref(0), participantId=ref(""), started=ref(false)
 let timer:ReturnType<typeof setInterval>|null=null, poller:ReturnType<typeof setInterval>|null=null
 const growth=computed(()=>Math.round(taps.value/99*100)), finished=computed(()=>taps.value>=99)
 const stage=computed(()=>growth.value>84?"🌻":growth.value>60?"🌿":growth.value>32?"🌱":"🌰")
 const rank=computed(()=>growth.value>=86?1:growth.value>=73?2:growth.value>=61?3:4)
 const allRacers=computed(()=>players.value.map((p,i)=>({...p,color:["#ff6b55","#f4b83f","#8e78df","#49a96e"][i%4]})).sort((a,b)=>b.score-a.score))
-function runTimer(endsAt:number){if(timer)clearInterval(timer);const tick=()=>seconds.value=Math.max(0,Math.ceil((endsAt-Date.now())/1000));tick();timer=setInterval(tick,250)}
-async function syncRoom(){try{const data:any=await $fetch("/api/room");players.value=data.players||[];if(data.state?.phase==="playing"&&(screen.value!=="play"||gameId.value!==data.state.gameId)){gameId.value=data.state.gameId;taps.value=players.value.find(p=>p.id===participantId.value)?.score||0;screen.value="play";runTimer(data.state.endsAt)}if(data.state?.phase==="waiting"&&role.value==="player"&&screen.value==="play")screen.value="waiting"}catch{}}
+function runTimer(startsAt:number,endsAt:number){if(timer)clearInterval(timer);const tick=()=>{started.value=Date.now()>=startsAt;seconds.value=started.value?Math.max(0,Math.ceil((endsAt-Date.now())/1000)):25};tick();timer=setInterval(tick,100)}
+async function syncRoom(){try{const data:any=await $fetch("/api/room");players.value=data.players||[];if(data.state?.phase==="playing"&&(screen.value!=="play"||gameId.value!==data.state.gameId)){gameId.value=data.state.gameId;taps.value=players.value.find(p=>p.id===participantId.value)?.score||0;screen.value="play";runTimer(data.state.startsAt||Date.now(),data.state.endsAt)}if(data.state?.phase==="waiting"&&role.value==="player"&&screen.value==="play")screen.value="waiting"}catch{}}
 async function joinRoom(){name.value=name.value.trim().slice(0,12)||"Gardener";ready.value=true;await $fetch("/api/room",{method:"POST",body:{action:"join",id:participantId.value,name:name.value,score:0}});await syncRoom()}
-async function startGame(){const data:any=await $fetch("/api/room",{method:"POST",body:{action:"start"}});gameId.value=data.state.gameId;taps.value=0;screen.value="play";runTimer(data.state.endsAt)}
+async function startGame(){const data:any=await $fetch("/api/room",{method:"POST",body:{action:"start"}});gameId.value=data.state.gameId;taps.value=0;screen.value="play";runTimer(data.state.startsAt,data.state.endsAt)}
 async function leaveGame(){if(role.value==="host"){await $fetch("/api/room",{method:"POST",body:{action:"reset"}});screen.value="lobby"}else screen.value="waiting"}
-function water(){if(seconds.value<=0||finished.value)return;taps.value=Math.min(99,taps.value+1);if(role.value==="player")$fetch("/api/room",{method:"POST",body:{action:"score",id:participantId.value,name:name.value,score:taps.value,ready:true}}).catch(()=>{})}
-onMounted(async()=>{const isPlayer=new URLSearchParams(location.search).has("join");role.value=isPlayer?"player":"host";screen.value=isPlayer?"waiting":"lobby";participantId.value=localStorage.getItem("bloom-rush-player")||crypto.randomUUID();localStorage.setItem("bloom-rush-player",participantId.value);const joinUrl=`${location.origin}${location.pathname}?join=SPROUT`;qr.value=await QRCode.toDataURL(joinUrl,{width:320,margin:2,color:{dark:"#173e2d",light:"#ffffff"},errorCorrectionLevel:"H"});await syncRoom();poller=setInterval(syncRoom,700)})
+function water(){if(!started.value||seconds.value<=0||finished.value)return;taps.value=Math.min(99,taps.value+1);if(role.value==="player")$fetch("/api/room",{method:"POST",body:{action:"score",id:participantId.value,name:name.value,score:taps.value,ready:true}}).catch(()=>{})}
+onMounted(async()=>{const isPlayer=new URLSearchParams(location.search).has("join");role.value=isPlayer?"player":"host";screen.value=isPlayer?"waiting":"lobby";participantId.value=localStorage.getItem("bloom-rush-player")||crypto.randomUUID();localStorage.setItem("bloom-rush-player",participantId.value);const joinUrl=`${location.origin}${location.pathname}?join=SPROUT`;qr.value=await QRCode.toDataURL(joinUrl,{width:320,margin:2,color:{dark:"#173e2d",light:"#ffffff"},errorCorrectionLevel:"H"});await syncRoom();poller=setInterval(syncRoom,250)})
 onBeforeUnmount(()=>{if(timer)clearInterval(timer);if(poller)clearInterval(poller)})
 </script>
 <template><main class="shell"><nav><a class="brand" href="#"><span>✿</span> BLOOM RUSH</a><div class="live"><i/> ROOM #SPROUT</div></nav>

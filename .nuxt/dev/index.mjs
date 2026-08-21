@@ -2156,7 +2156,22 @@ const plugins = [
 _wH6JrtIxmaSoA8lCPWFnE9z4lQeXW6H5z3l5aymEQw
 ];
 
-const assets = {};
+const assets = {
+  "/index.mjs": {
+    "type": "text/javascript; charset=utf-8",
+    "etag": "\"1c68a-qOEnBDKfJa1yps8n7mCv885qLxY\"",
+    "mtime": "2026-08-21T09:25:17.104Z",
+    "size": 116362,
+    "path": "index.mjs"
+  },
+  "/index.mjs.map": {
+    "type": "application/json",
+    "etag": "\"73131-JVmvxxukNQVYquBz3z4PW2L8y18\"",
+    "mtime": "2026-08-21T09:25:17.104Z",
+    "size": 471345,
+    "path": "index.mjs.map"
+  }
+};
 
 function readAsset (id) {
   const serverDir = dirname$1(fileURLToPath(globalThis._importMeta_.url));
@@ -3124,7 +3139,7 @@ async function readRoom() {
   const state = await roomStore.get("sprout/state", { type: "json" });
   const listed = await roomStore.list({ prefix: "sprout/players/" });
   const players = (await Promise.all(listed.blobs.map(({ key }) => roomStore.get(key, { type: "json" })))).filter(Boolean);
-  return { state: state != null ? state : { phase: "waiting", gameId: 0, endsAt: 0 }, players: players.sort((a, b) => b.score - a.score) };
+  return { state: state != null ? state : { phase: "waiting", gameId: 0, startsAt: 0, endsAt: 0 }, players: players.sort((a, b) => b.score - a.score) };
 }
 const room = defineEventHandler(async (event) => {
   var _a;
@@ -3148,12 +3163,13 @@ const room = defineEventHandler(async (event) => {
   }
   if (action === "start") {
     const current = await readRoom();
-    await roomStore.setJSON("sprout/state", { phase: "playing", gameId: current.state.gameId + 1, endsAt: Date.now() + 25e3 });
+    const startsAt = Date.now() + 3e3;
+    await roomStore.setJSON("sprout/state", { phase: "playing", gameId: current.state.gameId + 1, startsAt, endsAt: startsAt + 25e3 });
   }
   if (action === "reset") {
     const current = await readRoom();
     await Promise.all(current.players.map(({ id }) => roomStore.delete(`sprout/players/${id}`)));
-    await roomStore.setJSON("sprout/state", { phase: "waiting", gameId: current.state.gameId, endsAt: 0 });
+    await roomStore.setJSON("sprout/state", { phase: "waiting", gameId: current.state.gameId, startsAt: 0, endsAt: 0 });
   }
   return readRoom();
 });
