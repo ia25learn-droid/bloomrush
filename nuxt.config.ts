@@ -4,6 +4,6 @@ export default defineNuxtConfig({
   ssr: false,
   devtools: { enabled: false },
   modules: ["@netlify/nuxt"],
-  css: ["~~/assets/css/main.css"],
+  css: ["~~/assets/css/main.css", "~~/assets/css/participant.css"],
   app: { head: { title: "Bloom Rush — Tap, Water, Grow!", meta: [{ name: "description", content: "A joyful plant-growing tap race for teams and events." }] } }
 })
