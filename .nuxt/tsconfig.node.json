@@ -93,9 +93,9 @@
   "exclude": [
     "../node_modules",
     "../node_modules/nuxt/node_modules",
-    "../node_modules/@nuxt/telemetry/node_modules",
     "../dist",
     "../.data",
+    "../app/**/*",
     "../modules/*/runtime/**/*",
     "../test/nuxt/**/*",
     "../tests/nuxt/**/*",
@@ -103,8 +103,6 @@
     "../layers/*/modules/*/runtime/**/*",
     "../modules/*/runtime/server/**/*",
     "../layers/*/server/**/*",
-    "../layers/*/modules/*/runtime/server/**/*",
-    "../node_modules/runtime",
-    "../node_modules/dist/runtime"
+    "../layers/*/modules/*/runtime/server/**/*"
   ]
 }

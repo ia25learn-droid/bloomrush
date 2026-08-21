@@ -1,6 +1,9 @@
 {
-  "pid": 15168,
-  "startedAt": 1787223078536,
+  "pid": 8792,
+  "startedAt": 1787302288152,
   "command": "dev",
-  "cwd": "C:/Users/ET/Documents/Planting"
+  "cwd": "C:/Users/ET/Documents/Planting",
+  "port": 3000,
+  "hostname": "::1",
+  "url": "http://[::1]:3000"
 }

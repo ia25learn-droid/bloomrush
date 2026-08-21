@@ -2375,7 +2375,7 @@ function createSSRContext(event) {
 		url,
 		event,
 		runtimeConfig: useRuntimeConfig(event),
-		noSSR: event.context.nuxt?.noSSR || (false),
+		noSSR: true,
 		head: createHead(unheadOptions),
 		error: false,
 		nuxt: void 0,
@@ -2471,7 +2471,7 @@ const getSPARenderer = lazyCachedFunction(async () => {
 	};
 });
 function getRenderer(ssrContext) {
-	return ssrContext.noSSR ? getSPARenderer() : getSSRRenderer();
+	return getSPARenderer() ;
 }
 const getSSRStyles = lazyCachedFunction(() => Promise.resolve().then(function () { return styles$1; }).then((r) => r.default || r));
 
@@ -3131,7 +3131,7 @@ function renderPayloadJsonScript(opts) {
 		"type": "application/json",
 		"innerHTML": opts.data ? encodeForwardSlashes(stringify(opts.data, opts.ssrContext["~payloadReducers"])) : "",
 		"data-nuxt-data": appId,
-		"data-ssr": !(opts.ssrContext.noSSR)
+		"data-ssr": false
 	};
 	payload.id = "__NUXT_DATA__";
 	if (opts.src) payload["data-src"] = opts.src;
@@ -3206,7 +3206,7 @@ async function renderRoute(event, ssrError) {
 		event._path = event.node.req.url = ssrContext.url;
 		getPayloadCacheKey(ssrContext.url);
 	}
-	const renderer = await getRenderer(ssrContext);
+	const renderer = await getRenderer();
 	const canStream = NUXT_SSR_STREAMING;
 	const renderRouteContext = {
 		canStream,
