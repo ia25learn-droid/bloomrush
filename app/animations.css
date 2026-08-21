@@ -1,0 +1,18 @@
+.plant.finished-flower {
+  font-size: 270px;
+  animation: flower-wave 0.9s ease-in-out infinite;
+  filter: drop-shadow(7px 12px 0 rgba(23, 62, 45, 0.1)) drop-shadow(0 0 24px #ffd45c);
+}
+
+@keyframes flower-wave {
+  0%, 100% { transform: scale(1.085) rotate(-8deg); }
+  50% { transform: scale(1.12) rotate(8deg); }
+}
+
+@media (max-width: 500px) {
+  .plant.finished-flower { font-size: 220px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .plant.finished-flower { animation: none; }
+}
