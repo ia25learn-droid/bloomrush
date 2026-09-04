@@ -1,3 +1,4 @@
+/// <reference types="@nuxt/telemetry" />
 /// <reference types="@netlify/nuxt" />
 /// <reference path="types/nitro-layouts.d.ts" />
 /// <reference path="types/builder-env.d.ts" />
