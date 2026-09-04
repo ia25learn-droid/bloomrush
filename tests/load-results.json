@@ -1,0 +1,42 @@
+{
+  "passed": true,
+  "target": "http://localhost:3000",
+  "room": "load-1788495632582",
+  "players": 200,
+  "joinMs": 1322,
+  "raceAndDrainMs": 29168,
+  "totalMs": 33704,
+  "finalScoresSaved": 200,
+  "individualTaps": 19800,
+  "scoreRequests": 2842,
+  "playersReceivingStartBeforeDeadline": 200,
+  "tapRequestReductionPercent": 85.6,
+  "requests": 5237,
+  "unexpectedErrors": 0,
+  "injectedFailuresRecovered": 20,
+  "expectedRejections": 2,
+  "responseBytes": 1896949,
+  "latencyMs": {
+    "p50": 749,
+    "p95": 1372,
+    "p99": 1526,
+    "max": 3709
+  },
+  "byType": {
+    "join": 200,
+    "host": 16,
+    "start": 2,
+    "player": 2175,
+    "score": 2842,
+    "reset": 2
+  },
+  "p95ByTypeMs": {
+    "join": 1291,
+    "host": 3709,
+    "start": 70,
+    "player": 1158,
+    "score": 1434,
+    "reset": 49
+  },
+  "scope": "Real local Nuxt HTTP endpoint + Netlify local Blobs emulator; not live Netlify, Wi-Fi, or 200 physical phones. Synthetic records retained only under the isolated load-test room."
+}

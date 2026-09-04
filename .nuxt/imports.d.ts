@@ -31,3 +31,5 @@ export { withCtx, withDirectives, withKeys, withMemo, withModifiers, withScopeId
 export { requestIdleCallback, cancelIdleCallback } from '#app/compat/idle-callback';
 export { setInterval } from '#app/compat/interval';
 export { defineLazyHydrationComponent } from '#app/composables/lazy-hydration';
+export { useBloomRoom } from '../app/composables/useBloomRoom';
+export { createScoreQueue } from '../app/utils/score-queue';
