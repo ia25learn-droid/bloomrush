@@ -7,7 +7,10 @@ export function useBloomRoom() {
   const qr = ref(''), name = ref('You'), ready = ref(false), taps = ref(0), seconds = ref(25)
   const players = ref<Participant[]>([]), gameId = ref(0), participantId = ref(''), started = ref(false)
   const connectionError = ref(''), busy = ref(false), mustRescan = ref(false)
-  const growth = computed(() => Math.round(taps.value / 99 * 100)), finished = computed(() => taps.value >= 99)
+  const growth = computed(() => role.value === 'host'
+    ? (started.value ? Math.min(100, Math.round((25 - seconds.value) / 25 * 100)) : 0)
+    : Math.round(taps.value / 99 * 100))
+  const finished = computed(() => role.value === 'host' ? started.value && seconds.value <= 0 : taps.value >= 99)
   const stage = computed(() => growth.value > 84 ? '🌻' : growth.value > 60 ? '🌿' : growth.value > 32 ? '🌱' : '🌰')
   const allRacers = computed(() => players.value.map((p, i) => ({ ...p, score: Math.round(p.score / 99 * 100), color: ['#ff6b55', '#f4b83f', '#8e78df', '#49a96e'][i % 4] })).sort((a, b) => b.score - a.score))
   const rank = computed(() => allRacers.value.findIndex(p => p.id === participantId.value) + 1)
@@ -126,9 +129,11 @@ export function useBloomRoom() {
     finally { busy.value = false }
   }
   function water() {
+    if (role.value === 'host') return
     if (!started.value || seconds.value <= 0 || finished.value) return
     taps.value++
-    if (role.value === 'player') { pendingScore = true; queue?.enqueue(taps.value, finished.value) }
+    pendingScore = true
+    queue?.enqueue(taps.value, finished.value)
   }
   onMounted(async () => {
     scannedJoinCode = new URLSearchParams(location.search).get('join') ?? ''
