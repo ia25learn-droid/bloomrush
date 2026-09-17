@@ -6,14 +6,14 @@ export function useBloomRoom() {
   const role = ref<'host' | 'player'>('host'), screen = ref<'lobby' | 'waiting' | 'play'>('lobby')
   const qr = ref(''), name = ref('You'), ready = ref(false), taps = ref(0), seconds = ref(25)
   const players = ref<Participant[]>([]), gameId = ref(0), participantId = ref(''), started = ref(false)
-  const connectionError = ref(''), busy = ref(false)
+  const connectionError = ref(''), busy = ref(false), mustRescan = ref(false)
   const growth = computed(() => Math.round(taps.value / 99 * 100)), finished = computed(() => taps.value >= 99)
   const stage = computed(() => growth.value > 84 ? '🌻' : growth.value > 60 ? '🌿' : growth.value > 32 ? '🌱' : '🌰')
   const allRacers = computed(() => players.value.map((p, i) => ({ ...p, score: Math.round(p.score / 99 * 100), color: ['#ff6b55', '#f4b83f', '#8e78df', '#49a96e'][i % 4] })).sort((a, b) => b.score - a.score))
   const rank = computed(() => allRacers.value.findIndex(p => p.id === participantId.value) + 1)
   let timer: ReturnType<typeof setInterval>, poller: ReturnType<typeof setTimeout>, stopped = false, syncing = false
   let offset = 0, newestServerTime = 0, queue: ReturnType<typeof createScoreQueue> | undefined
-  let pendingScore = false, pollFailures = 0
+  let pendingScore = false, pollFailures = 0, scannedJoinCode = '', renderedJoinCode = ''
   const serverTime = () => Date.now() + offset
 
   function apply(data: any, requestedAt: number) {
@@ -25,6 +25,17 @@ export function useBloomRoom() {
     if (data.players) players.value = data.players
     if (data.participant) { name.value = data.participant.name; ready.value = true }
     const state = data.state
+    if (role.value === 'host' && state.joinCode && state.joinCode !== renderedJoinCode) {
+      renderedJoinCode = state.joinCode
+      QRCode.toDataURL(`${location.origin}${location.pathname}?join=${state.joinCode}`, { width: 320, margin: 2, color: { dark: '#173e2d', light: '#ffffff' }, errorCorrectionLevel: 'H' }).then(value => { qr.value = value })
+    }
+    if (role.value === 'player' && scannedJoinCode !== state.joinCode) {
+      queue?.stop(); queue = undefined; ready.value = false; started.value = false
+      if (timer) clearInterval(timer)
+      mustRescan.value = true
+      screen.value = 'waiting'
+      return
+    }
     if (state.phase === 'waiting') {
       queue?.stop(); queue = undefined; pendingScore = false
       if (timer) clearInterval(timer)
@@ -92,7 +103,7 @@ export function useBloomRoom() {
   async function joinRoom() {
     if (busy.value) return
     busy.value = true
-    try { await action({ action: 'join', id: participantId.value, name: name.value.trim() || 'Gardener' }); connectionError.value = '' }
+    try { await action({ action: 'join', id: participantId.value, name: name.value.trim() || 'Gardener', joinCode: scannedJoinCode }); connectionError.value = '' }
     catch { connectionError.value = 'Could not join. Please try again.' }
     finally { busy.value = false }
   }
@@ -107,21 +118,28 @@ export function useBloomRoom() {
       try { await action({ action: 'reset' }) } catch { connectionError.value = 'Could not reset. Please try again.' }
     }
   }
+  async function startOver() {
+    if (role.value !== 'host' || busy.value) return
+    busy.value = true
+    try { await action({ action: 'reset' }); players.value = []; connectionError.value = '' }
+    catch { connectionError.value = 'Could not start over. Please try again.' }
+    finally { busy.value = false }
+  }
   function water() {
     if (!started.value || seconds.value <= 0 || finished.value) return
     taps.value++
     if (role.value === 'player') { pendingScore = true; queue?.enqueue(taps.value, finished.value) }
   }
   onMounted(async () => {
-    const isPlayer = new URLSearchParams(location.search).has('join')
+    scannedJoinCode = new URLSearchParams(location.search).get('join') ?? ''
+    const isPlayer = Boolean(scannedJoinCode)
     role.value = isPlayer ? 'player' : 'host'
     screen.value = isPlayer ? 'waiting' : 'lobby'
     participantId.value = sessionStorage.getItem('bloom-rush-player') || crypto.randomUUID()
     sessionStorage.setItem('bloom-rush-player', participantId.value)
-    qr.value = await QRCode.toDataURL(`${location.origin}${location.pathname}?join=SPROUT`, { width: 320, margin: 2, color: { dark: '#173e2d', light: '#ffffff' }, errorCorrectionLevel: 'H' })
     await syncRoom(isPlayer)
     poller = setTimeout(poll, 1000 + Math.random() * 150)
   })
   onBeforeUnmount(() => { stopped = true; clearInterval(timer); clearTimeout(poller); queue?.stop() })
-  return { role, screen, qr, name, ready, taps, seconds, players, started, growth, finished, stage, rank, allRacers, connectionError, busy, joinRoom, startGame, leaveGame, water }
+  return { role, screen, qr, name, ready, taps, seconds, players, started, growth, finished, stage, rank, allRacers, connectionError, busy, mustRescan, joinRoom, startGame, startOver, leaveGame, water }
 }

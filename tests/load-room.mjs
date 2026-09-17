@@ -36,8 +36,10 @@ const pollTasks = []
 let report
 try {
   console.log(`Local-only 200-player load test: ${room}`)
+  const emptyRoom = await request(null, 'host')
+  const joinCode = emptyRoom.state.joinCode
   const joinStart = performance.now()
-  await Promise.all(ids.map((id, i) => request({ action: 'join', id, name: `Tester ${i}` })))
+  await Promise.all(ids.map((id, i) => request({ action: 'join', id, name: `Tester ${i}`, joinCode })))
   const joinMs = performance.now() - joinStart
   const lobby = await request(null, 'host')
   assert.equal(lobby.players.length, 200)
@@ -94,11 +96,16 @@ try {
   const ordered = (await request(null, 'host')).players.find(p => p.id === ids[0])
   assert.equal(ordered.score, 99)
   assert.equal(ordered.seq, current.seq + 2)
-  await request({ action: 'reset' })
+  const reset = await request({ action: 'reset' })
+  assert.notEqual(reset.state.joinCode, joinCode, 'Start over must rotate the QR join code')
+  assert.equal((await request(null, 'host')).players.length, 0, 'Start over must clear every participant')
+  await request({ action: 'join', id: 'expired-qr-check', name: 'Expired', joinCode }, 'player', 403)
   await request({ action: 'score', id: ids[0], gameId, seq: 999, score: 99 }, 'player', 409)
+  await request({ action: 'join', id: ids[0], name: 'Tester 0', joinCode: reset.state.joinCode })
   const second = await request({ action: 'start' })
   assert.notEqual(second.state.gameId, gameId)
   const clean = await request(null, 'host')
+  assert.equal(clean.players.length, 1, 'Only participants who scanned the new QR may rejoin')
   assert(clean.players.every(p => p.score === 0), 'New round must start at zero')
   await request({ action: 'score', id: ids[0], gameId: second.state.gameId, seq: 1, score: 1 }, 'player', 409)
   await request({ action: 'reset' })
@@ -118,7 +125,7 @@ try {
   }
 } catch (error) {
   process.exitCode = 1
-  report = { passed: false, room, error: String(error), requests: metrics.requests, errors: metrics.errors.slice(0, 10) }
+  report = { passed: false, room, error: error?.stack ?? String(error), requests: metrics.requests, errors: metrics.errors.slice(0, 10) }
 } finally {
   active = false
   queues.forEach(q => q.stop())

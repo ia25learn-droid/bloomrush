@@ -1,3 +1,26 @@
 .race-grid.solo {
   grid-template-columns: 1fr;
 }
+
+.start-over {
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: var(--coral);
+  color: #fff;
+  padding: 10px 16px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  cursor: pointer;
+}
+
+.start-over:disabled { opacity: .6; cursor: wait; }
+
+.rescan-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: var(--cream);
+}

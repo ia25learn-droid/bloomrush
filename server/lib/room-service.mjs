@@ -3,7 +3,8 @@ const identifier = (value) => {
   if (typeof value !== 'string' || !/^[a-zA-Z0-9_-]{1,64}$/.test(value)) fail(400, 'Invalid identifier')
   return value
 }
-const initialState = () => ({ phase: 'waiting', gameId: 0, startsAt: 0, endsAt: 0 })
+const joinCode = () => crypto.randomUUID().replaceAll('-', '').slice(0, 10)
+const initialState = () => ({ phase: 'waiting', gameId: 0, startsAt: 0, endsAt: 0, joinCode: joinCode() })
 
 const writes = new Map()
 // Serialize same-player requests in one process (also protects the file-based local
@@ -34,14 +35,15 @@ export async function handleRoom(store, request, now = Date.now) {
   const serverReceivedAt = now()
   const root = `v2/${identifier(request.room ?? 'sprout')}`
   const stateKey = `${root}/state`
-  let state = await store.get(stateKey, { type: 'json' }) ?? initialState()
+  let state = await update(store, stateKey, old => old?.joinCode ? null : { ...initialState(), ...(old ?? {}), joinCode: joinCode() })
   const rosterPrefix = `${root}/players/`
   const reply = (extra = {}) => ({ state, serverReceivedAt, serverNow: now(), ...extra })
 
   if (request.method === 'GET') {
     if (request.view === 'host') {
       const { blobs } = await store.list({ prefix: rosterPrefix })
-      const players = (await Promise.all(blobs.map(async ({ key }) => {
+      const visibleBlobs = blobs.filter(({ key }) => !key.split('/').at(-1).startsWith('.'))
+      const players = (await Promise.all(visibleBlobs.map(async ({ key }) => {
         const player = await store.get(key, { type: 'json' })
         if (!player) return null
         const currentRound = state.phase === 'playing' && player.gameId === state.gameId
@@ -62,6 +64,7 @@ export async function handleRoom(store, request, now = Date.now) {
   const body = request.body ?? {}
   if (body.action === 'join') {
     if (state.phase !== 'waiting') fail(409, 'The race has already started')
+    if (body.joinCode !== state.joinCode) fail(403, 'This QR code has expired')
     const id = identifier(body.id)
     const name = typeof body.name === 'string' ? body.name.trim().slice(0, 12) : ''
     if (!name) fail(400, 'Please enter a nickname')
@@ -87,13 +90,15 @@ export async function handleRoom(store, request, now = Date.now) {
       const current = old ?? initialState()
       if (current.phase === 'playing') return null
       const startsAt = now() + 3_000
-      return { phase: 'playing', gameId: current.gameId + 1, startsAt, endsAt: startsAt + 25_000 }
+      return { ...current, phase: 'playing', gameId: current.gameId + 1, startsAt, endsAt: startsAt + 25_000 }
     })
     return reply()
   }
   if (body.action === 'reset') {
     state = await update(store, stateKey, old => ({ ...initialState(), gameId: (old?.gameId ?? 0) + 1 }))
-    return reply()
+    const { blobs } = await store.list({ prefix: rosterPrefix })
+    await Promise.all(blobs.map(({ key }) => store.delete(key)))
+    return reply({ players: [] })
   }
   fail(400, 'Unknown room action')
 }
